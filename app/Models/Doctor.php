@@ -22,20 +22,39 @@ class Doctor extends Model
         'consultation_price',
         'emergency_price',
         'is_verified',
-        'status'
+        'status',
     ];
 
-      // Toujours charger la relation user
+    protected $casts = [
+        'is_verified' => 'boolean',
+        'consultation_price' => 'decimal:2',
+        'emergency_price' => 'decimal:2',
+        'latitude' => 'decimal:8',
+        'longitude' => 'decimal:8',
+    ];
+
+    // Toujours charger user
     protected $with = ['user'];
-    // Accesseurs
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors
+    |--------------------------------------------------------------------------
+    */
+
     public function getFullNameAttribute(): string
     {
-        return "{$this->user->first_name} {$this->user->last_name}";
+        return $this->user
+            ? trim($this->user->first_name . ' ' . $this->user->last_name)
+            : '';
     }
 
-  
+    /*
+    |--------------------------------------------------------------------------
+    | Relations
+    |--------------------------------------------------------------------------
+    */
 
-    // Relations
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -71,14 +90,29 @@ class Doctor extends Model
         return $this->hasMany(Review::class);
     }
 
-    public function appointmentReasons()
-    {
-        return $this->hasMany(AppointmentReason::class);
-    }
     public function timeSlots()
     {
         return $this->hasManyThrough(TimeSlot::class, Availability::class);
     }
 
-    
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes utiles (multi-tenant)
+    |--------------------------------------------------------------------------
+    */
+
+    public function scopeOfEstablishment($query, $establishmentId)
+    {
+        return $query->where('establishment_id', $establishmentId);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    public function scopeVerified($query)
+    {
+        return $query->where('is_verified', true);
+    }
 }

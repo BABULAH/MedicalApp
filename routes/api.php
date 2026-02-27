@@ -1,122 +1,81 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Doctor\{
+    AppointmentController,
+    };
+
+use App\Http\Controllers\Api\Patient\{
+    DoctorController,
+    DoctorAvailabilityController,
+    TimeSlotController,
+};
 
 /*
 |--------------------------------------------------------------------------
-| API V1
+| Routes publiques (sans authentification)
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('v1')->group(function () {
+Route::prefix('auth')->name('auth:api')->group(function () {
+    Route::post('login', [AuthController::class, 'login'])->name('login');
+    Route::post('register', [AuthController::class, 'register'])->name('register');
+});
 
-    /*
-    |--------------------------------------------------------------------------
-    | AUTH – PATIENT / USER (SANCTUM)
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('auth')->group(function () {
-        Route::post('/register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
-        Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
+/*
+|--------------------------------------------------------------------------
+| routes protégées avec vérification de rôle (Spatie)
+|--------------------------------------------------------------------------
+*/
 
-        Route::middleware('auth:sanctum')->group(function () {
-            Route::post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
-            Route::get('/me', [\App\Http\Controllers\Api\AuthController::class, 'me']);
-        });
+Route::middleware('auth:api')->get('/me', [AuthController::class, 'me']);
+
+
+
+
+Route::middleware(['auth:api', 'role:patient'])
+    ->prefix('patient')
+    ->group(function () {
+        Route::get('doctors', [DoctorController::class, 'index']);
+        Route::get('doctors/{doctor}', [DoctorController::class, 'show']);
+
+        Route::get('/doctor/{doctor_id}/availabilities', [DoctorAvailabilityController::class, 'index']);
+
+        // Lister tous les créneaux d?un médecin
+        Route::get('/doctors/{doctor_id}/time-slots', [TimeSlotController::class, 'index']);
+        // Lister les créneaux d 'une disponibilité spécifique
+        Route::get('/availabilities/{availability_id}/time-slots', [TimeSlotController::class, 'listByAvailability']);
+        
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | AUTH – DOCTOR (JWT)
-    |--------------------------------------------------------------------------
-    */
-    // Route::prefix('v1/doctor')->group(function () {() {
-    //         Route::post('/login', [\App\Http\Controllers\Api\Doctor\AuthController::class, 'login'])
-    //             ->name('doctor.login');
-    //     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | PUBLIC DATA
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/specialities', [\App\Http\Controllers\Api\SpecialityController::class, 'index']);
-    Route::get('/localities', [\App\Http\Controllers\Api\LocalityController::class, 'index']);
-    Route::get('/establishments', [\App\Http\Controllers\Api\EstablishmentController::class, 'index']);
 
-    Route::get('/doctors', [\App\Http\Controllers\Api\DoctorController::class, 'index']);
-    Route::get('/doctors/{doctor}', [\App\Http\Controllers\Api\DoctorController::class, 'show']);
-    Route::get('/doctors/{doctor}/availabilities', [\App\Http\Controllers\Api\AvailabilityController::class, 'byDoctor']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | PATIENT – SANCTUM + ROLE
-    |--------------------------------------------------------------------------
-    */
-    Route::middleware(['auth:sanctum', 'role:patient'])->group(function () {
 
-        Route::get('/profile', [\App\Http\Controllers\Api\ProfileController::class, 'show']);
-        Route::put('/profile', [\App\Http\Controllers\Api\ProfileController::class, 'update']);
 
-        Route::apiResource('appointments', \App\Http\Controllers\Api\AppointmentController::class)
-            ->only(['index', 'store', 'show', 'destroy']);
-
-        Route::post('/appointments/{appointment}/cancel',
-            [\App\Http\Controllers\Api\AppointmentController::class, 'cancel']);
-
-        Route::post('/doctors/{doctor}/reviews',
-            [\App\Http\Controllers\Api\ReviewController::class, 'store']);
-
-        Route::get('/notifications',
-            [\App\Http\Controllers\Api\NotificationController::class, 'index']);
-
-        Route::post('/notifications/{notification}/read',
-            [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
+Route::middleware(['auth:api', 'role:doctor'])
+    ->prefix('doctor')
+    ->group(function () {
+        Route::get('appointments', [AppointmentController::class, 'index']);
+        Route::post('appointments/{appointment}/accept', [AppointmentController::class, 'accept']);
+        Route::post('appointments/{appointment}/reject', [AppointmentController::class, 'reject']);
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | ADMIN – SANCTUM + ROLE
-    |--------------------------------------------------------------------------
-    */
-    Route::middleware(['auth:sanctum', 'role:admin'])
-        ->prefix('admin')
-        ->group(function () {
 
-            Route::get('/profile', [\App\Http\Controllers\Api\Admin\ProfileController::class, 'show']);
-            Route::put('/profile', [\App\Http\Controllers\Api\Admin\ProfileController::class, 'update']);
+Route::middleware(['auth:sanctum'])->group(function () {
 
-            Route::apiResource('doctors',
-                \App\Http\Controllers\Api\Admin\DoctorController::class)
-                ->except(['create', 'edit']);
-        });
 
-    /*
-    |--------------------------------------------------------------------------
-    | DOCTOR – JWT + MULTI-TENANT
-    |--------------------------------------------------------------------------
-    */
-    Route::middleware([
-            'auth:api_doctor',
-            'ensure.doctor.tenant'
-        ])
-        ->prefix('doctor')
-        ->group(function () {
+    // Accessible par doctor
+    Route::middleware('role:doctor')->prefix('doctor')->group(function () {
+        Route::get('appointments', [AppointmentController::class, 'index']);
+        Route::post('appointments/{appointment}/accept', [AppointmentController::class, 'accept']);
+        Route::post('appointments/{appointment}/reject', [AppointmentController::class, 'reject']);
+        // Route::apiResource('appointments', AppointmentController::class);
+    });
 
-            Route::get('/profile',
-                [\App\Http\Controllers\Api\Doctor\ProfileController::class, 'show']);
-
-            Route::put('/profile',
-                [\App\Http\Controllers\Api\Doctor\ProfileController::class, 'update']);
-
-            Route::apiResource('availabilities',
-                \App\Http\Controllers\Api\Doctor\AvailabilityController::class)
-                ->except(['create', 'edit', 'show']);
-
-            Route::get('/appointments',
-                [\App\Http\Controllers\Api\Doctor\AppointmentController::class, 'index']);
-
-            Route::patch('/appointments/{appointment}',
-                [\App\Http\Controllers\Api\Doctor\AppointmentController::class, 'update']);
-        });
+    // Accessible par patient
+    Route::middleware('role:patient')->prefix('patient')->group(function () {
+        // Route::get('appointments', ...);
+    });
 });

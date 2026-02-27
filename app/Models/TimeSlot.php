@@ -34,6 +34,8 @@ class TimeSlot extends Model
                     ->where('role', 'doctor'); // facultatif
     }
 
+
+
     protected static function booted()
     {
         static::creating(function ($timeSlot) {

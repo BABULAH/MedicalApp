@@ -2,13 +2,11 @@
 
 namespace App\Filament\Resources\DoctorResource\Pages;
 
+use Illuminate\Support\Str;
 use App\Filament\Resources\DoctorResource;
+use App\Models\{Doctor, User};
 use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
-use App\Models\Doctor;
-use App\Models\User;
-
-use Illuminate\Support\Str;
 class CreateDoctor extends CreateRecord
 {
     protected static string $resource = DoctorResource::class;
@@ -19,17 +17,17 @@ class CreateDoctor extends CreateRecord
     {
         return $this->getResource()::getUrl('index');
     }
+    
 
-    // protected function mutateFormDataBeforeCreate(array $data): array
-    // {
-    //     do {
-    //         $registrationNumber = strtoupper(Str::random(12));
-    //     } while (Doctor::where('registration_number', $registrationNumber)->exists());
+ protected function afterCreate(): void
+{
+    $user = $this->record->user;
 
-    //     $data['registration_number'] = $registrationNumber;
-
-    //     return $data;
-    // }
+    if ($user) {
+        $user->syncRoles(['doctor']);
+        $user->update(['role' => 'doctor']); // ✅ sécurité double
+    }
+}
 
 
     protected function getHeaderActions(): array
@@ -42,29 +40,31 @@ class CreateDoctor extends CreateRecord
         ];
     }
 
-    protected  function mutateFormDataBeforeCreate(array $data): array
-    {
-        // 1️⃣ Créer le User
-        $user = User::create([
-            'first_name'       => $data['user']['first_name'],
-            'last_name'        => $data['user']['last_name'],
-            'email'            => $data['user']['email'],
-            'password'         => $data['user']['password'],
-            'establishment_id' => $data['establishment_id'],
-        ]);
-
-          if (! auth()->user()->hasRole('super_admin')) {
-                $data['establishment_id'] = auth()->user()->establishment_id;
-            }
-
-        // 2️⃣ Attribuer le rôle doctor (Spatie)
-        $user->assignRole('doctor');
-
-        // 3️⃣ Lier le doctor au user
-        $data['user_id'] = $user->id;
-
-        unset($data['user']);
-
-        return $data;
+protected function mutateFormDataBeforeCreate(array $data): array
+{
+    // 1️⃣ Corriger establishment_id EN PREMIER
+    if (!auth()->user()->hasRole('super_admin')) {
+        $data['establishment_id'] = auth()->user()->establishment_id;
     }
+
+    // 2️⃣ Créer le User avec role = 'doctor' directement
+    $user = User::create([
+        'first_name'       => $data['user']['first_name'],
+        'last_name'        => $data['user']['last_name'],
+        'email'            => $data['user']['email'],
+        'password'         => $data['user']['password'],
+        'establishment_id' => $data['establishment_id'],
+        'role'             => 'doctor', // ✅ colonne role dans users
+    ]);
+
+    // 3️⃣ Spatie → model_has_roles
+    $user->assignRole('doctor');
+
+    // 4️⃣ Lier le doctor au user
+    $data['user_id'] = $user->id;
+    unset($data['user']);
+
+    return $data;
+}
+
 }

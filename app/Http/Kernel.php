@@ -39,11 +39,10 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             // Middleware multi-tenant pour filtrer automatiquement par establishment_id
-            \App\Http\Middleware\EstablishmentScopeMiddleware::class,
+            // \App\Http\Middleware\EstablishmentScopeMiddleware::class,
         ],
 
     ];
@@ -52,6 +51,8 @@ class Kernel extends HttpKernel
         // ...
         'role' => \App\Http\Middleware\CheckRole::class,
         'ensure.doctor.tenant' => \App\Http\Middleware\EnsureDoctorHasTenant::class,
+        'doctor.active' => \App\Http\Middleware\EnsureDoctorIsActive::class,
+        'establishment.scope' => \App\Http\Middleware\EstablishmentScopeMiddleware::class,
     ];
 
 
