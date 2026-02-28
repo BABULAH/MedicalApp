@@ -10,6 +10,7 @@ class Appointment extends Model
         'user_id',
         'doctor_id',
         'date',
+        'availability_id',
         'time_slot_id',
         'appointment_reason_id',
         'status',
@@ -18,18 +19,16 @@ class Appointment extends Model
         'establishment_id',
     ];
 
-    // Définir les statuts possibles
-    const STATUS_PENDING = 'pending';
-    const STATUS_APPROVED = 'approved';
-    const STATUS_REJECTED = 'rejected';
-    const STATUS_CANCELLED = 'cancelled';
+    // Define the possible statutes
+    const STATUS_PENDING  = 'attente';
+    const STATUS_APPROVED = 'valide';
+    const STATUS_CANCELLED = 'annule';
 
     public static function getStatuses(): array
     {
         return [
             self::STATUS_PENDING,
             self::STATUS_APPROVED,
-            self::STATUS_REJECTED,
             self::STATUS_CANCELLED,
         ];
     }
@@ -39,5 +38,6 @@ class Appointment extends Model
     public function establishment() { return $this->belongsTo(Establishment::class); }
     public function timeSlot() { return $this->belongsTo(TimeSlot::class); }
     public function reason() { return $this->belongsTo(AppointmentReason::class, 'appointment_reason_id'); }
+    public function availability() { return $this->belongsTo(Availability::class, 'availability_id'); }
 }
 

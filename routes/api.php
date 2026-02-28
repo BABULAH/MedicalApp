@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Patient\{
     DoctorController,
     DoctorAvailabilityController,
     TimeSlotController,
+    PatientAppointmentController,
 };
 
 /*
@@ -46,6 +47,13 @@ Route::middleware(['auth:api', 'role:patient'])
         Route::get('/doctors/{doctor_id}/time-slots', [TimeSlotController::class, 'index']);
         // Lister les créneaux d 'une disponibilité spécifique
         Route::get('/availabilities/{availability_id}/time-slots', [TimeSlotController::class, 'listByAvailability']);
+
+        //La route pour demander un rendez-vous
+        Route::post('appointments', [PatientAppointmentController::class, 'store']);
+        // La route pour annuler un rendez-vous
+        Route::patch('appointments/{id}/cancel', [PatientAppointmentController::class, 'cancel']);
+        // La route pour lister les rendez-vous du patient
+        Route::get('appointments', [PatientAppointmentController::class, 'index']);
         
     });
 
@@ -54,28 +62,11 @@ Route::middleware(['auth:api', 'role:patient'])
 
 
 
-Route::middleware(['auth:api', 'role:doctor'])
-    ->prefix('doctor')
-    ->group(function () {
-        Route::get('appointments', [AppointmentController::class, 'index']);
-        Route::post('appointments/{appointment}/accept', [AppointmentController::class, 'accept']);
-        Route::post('appointments/{appointment}/reject', [AppointmentController::class, 'reject']);
-    });
+Route::prefix('doctor')->middleware(['auth:api', 'role:doctor'])->group(function () {
 
+    Route::get('/appointments', [AppointmentController::class, 'index']);
+    Route::put('appointments/{id}/status', [AppointmentController::class, 'updateStatus']);              
 
-Route::middleware(['auth:sanctum'])->group(function () {
-
-
-    // Accessible par doctor
-    Route::middleware('role:doctor')->prefix('doctor')->group(function () {
-        Route::get('appointments', [AppointmentController::class, 'index']);
-        Route::post('appointments/{appointment}/accept', [AppointmentController::class, 'accept']);
-        Route::post('appointments/{appointment}/reject', [AppointmentController::class, 'reject']);
-        // Route::apiResource('appointments', AppointmentController::class);
-    });
-
-    // Accessible par patient
-    Route::middleware('role:patient')->prefix('patient')->group(function () {
-        // Route::get('appointments', ...);
-    });
 });
+
+

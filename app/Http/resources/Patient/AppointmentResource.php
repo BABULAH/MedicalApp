@@ -21,6 +21,10 @@ class AppointmentResource extends JsonResource
                 'id' => $this->user->id,
                 'name' => $this->user->first_name . ' ' . $this->user->last_name,
             ],
+            'availability' => $this->availability ? [
+                'id' => $this->availability->id,
+                'day_of_week' => $this->availability->day_of_week,
+            ] : null,
             'time_slot' => [
                 'id' => $this->timeSlot->id,
                 'start_time' => $this->timeSlot->start_time,

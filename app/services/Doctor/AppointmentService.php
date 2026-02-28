@@ -4,59 +4,47 @@ namespace App\Services\Doctor;
 
 use Illuminate\Support\Facades\{Auth, Log};
 use App\Models\Appointment;
+use Illuminate\Support\Collection;
 
 
 class AppointmentService
 {
-    public function list(array $filters)
+    public function list(array $filters = [])
     {
         $doctor = auth()->user()->doctor;
 
-        if (!$doctor) {
-            abort(403, 'Aucun profil doctor trouvé.');
-        }
+        $query = Appointment::query()
+            ->where('doctor_id', $doctor->id)
+            ->with([
+                'doctor.user',
+                'user',
+                'availability',
+                'timeSlot',
+                'reason'
+            ]);
 
-        $query = Appointment::with([
-            'user',
-            'doctor.user',
-            'establishment',
-            'timeSlot',
-            'reason'
-        ])
-        ->where('doctor_id', $doctor->id); // 🔒 Sécurité ici
-
+        // 🔎 Filtre par statut
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        if (!empty($filters['user_id'])) {
-            $query->where('user_id', $filters['user_id']);
+        // 📅 Filtre par date
+        if (!empty($filters['date_from'])) {
+            $query->whereDate('date', '>=', $filters['date_from']);
         }
 
-        if (!empty($filters['date'])) {
-            $query->whereDate('date', $filters['date']);
+        if (!empty($filters['date_to'])) {
+            $query->whereDate('date', '<=', $filters['date_to']);
         }
 
-        return $query->latest()->paginate($filters['per_page'] ?? 15);
-    }
-
-
-
-    // Méthode pour les rendez-vous en attente (indexWatcher)
-    public function listAttente(array $filters = [])
-    {
-        $query = Appointment::query();
-
-        if (!empty($filters['status'])) {
-            $query->where('status', $filters['status']);
+        // 👤 Filtre par nom du patient
+        if (!empty($filters['patient_name'])) {
+            $query->whereHas('user', function ($q) use ($filters) {
+                $q->where('first_name', 'like', '%' . $filters['patient_name'] . '%')
+                ->orWhere('last_name', 'like', '%' . $filters['patient_name'] . '%');
+            });
         }
 
-        if (!empty($filters['doctor_id'])) {
-            $query->where('doctor_id', $filters['doctor_id']);
-        }
-
-        // Autres filtres si besoin
-
-        return $query->get();
+        return $query->orderBy('date', 'desc')->paginate(10);
     }
 }

@@ -45,7 +45,7 @@ class AppointmentResource extends JsonResource
 
             'reason' => [
                 'id' => $this->reason?->id,
-                'label' => $this->reason?->label,
+                'label' => $this->reason?->description,
             ],
 
             'created_at' => $this->created_at,

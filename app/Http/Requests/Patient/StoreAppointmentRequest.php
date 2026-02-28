@@ -18,6 +18,7 @@ class StoreAppointmentRequest extends FormRequest
             'availability_id' => ['required', 'exists:availabilities,id'],
             'time_slot_id' => ['required', 'exists:time_slots,id'],
             'appointment_reason_id' => ['required', 'exists:appointment_reasons,id'],
+            'appointment_date' => ['required', 'date', 'after_or_equal:today'],
         ];
     }
 }
